@@ -1,1 +1,0 @@
-%define KERNEL_SECTORS 16
