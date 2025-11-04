@@ -38,38 +38,60 @@ static void on_key(struct regs* r){
     pic_send_eoi(1);
 }
 
+static void put_hex_nibble(uint8_t n){
+    n &= 0x0F;
+    vga_putc(n < 10 ? ('0'+n) : ('A'+(n-10)));
+}
+static void put_hex8(uint8_t v){
+    put_hex_nibble(v>>4); put_hex_nibble(v);
+}
+
 void keyboard_init(void){
     isr_register_handler(33, on_key); // IRQ1
-    // Robust 8042 init
+    // Diagnostics: controller self-test and port test
+    vga_putc('{'); vga_putc('K'); vga_putc('B'); vga_putc(':');
+    ps2_wait_input_clear(); outb(0x64, 0xAA); // controller self-test
+    ps2_wait_output_full(); uint8_t st1 = inb(0x60); // expect 0x55
+    put_hex8(st1);
+    vga_putc(',');
+    ps2_wait_input_clear(); outb(0x64, 0xAB); // test port 1
+    ps2_wait_output_full(); uint8_t st2 = inb(0x60); // expect 0x00
+    put_hex8(st2);
+    vga_putc('}');
+
+    // Robust init with proper waits (still not blocking on ACK)
     ps2_flush();
-    // Disable both ports
-    ps2_wait_input_clear(); outb(0x64, 0xAD);
-    ps2_wait_input_clear(); outb(0x64, 0xA7);
-    // Read command byte
+    ps2_wait_input_clear(); outb(0x64, 0xAD); // disable port1
+    ps2_wait_input_clear(); outb(0x64, 0xA7); // disable port2
+    // read command byte
     ps2_wait_input_clear(); outb(0x64, 0x20);
     ps2_wait_output_full();
     uint8_t cmd = inb(0x60);
-    // Enable IRQ1 and translation
-    cmd |= 0x01;   // IRQ1 enable
+    // enable IRQ1, enable translation, ensure keyboard not disabled in cmd byte
+    cmd |= 0x01;   // IRQ1
     cmd |= 0x40;   // translation
-    // Write command byte
+    cmd &= ~(0x10); // clear disable keyboard bit if set
+    // write command byte back
     ps2_wait_input_clear(); outb(0x64, 0x60);
     ps2_wait_input_clear(); outb(0x60, cmd);
-    // Enable first port (keyboard)
+    // enable port1
     ps2_wait_input_clear(); outb(0x64, 0xAE);
-    // Enable device scanning
-    ps2_flush();
+    // enable device scanning
     ps2_wait_input_clear(); outb(0x60, 0xF4);
-    ps2_wait_output_full(); (void)inb(0x60); // ACK 0xFA
 }
 
 void keyboard_poll(void){
-    if (inb(0x64) & 0x01){
+    uint8_t st = inb(0x64);
+    if (st & 0x01){
         uint8_t sc = inb(0x60);
         if (sc & 0x80) return;
         char c = 0;
         if (sc < sizeof(scancode_map)) c = scancode_map[sc];
-        vga_putc('*');
+        vga_putc('*'); vga_putc('['); put_hex8(st); vga_putc(':'); put_hex8(sc); vga_putc(']');
         if (c) shell_handle_char(c);
     }
+}
+
+uint8_t keyboard_status(void){
+    return inb(0x64);
 }
