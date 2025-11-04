@@ -86,5 +86,6 @@ void isr_handler(struct regs* r){
 void irq_handler(struct regs* r){
     isr_t h = handlers[r->int_no];
     if (h) h(r);
-    pic_send_eoi((uint8_t)r->int_no);
+    uint8_t irq = (uint8_t)(r->int_no - 32);
+    pic_send_eoi(irq);
 }

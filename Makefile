@@ -88,7 +88,7 @@ $(IMG): $(MBR_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
 	@truncate -s 1M $@
 
 run: $(IMG)
-	qemu-system-x86_64 -drive format=raw,file=$(BUILD_DIR)/nox_os.bin -serial stdio -no-reboot -no-shutdown -monitor none -d guest_errors
+	qemu-system-x86_64 -drive format=raw,file=$(BUILD_DIR)/nox_os.bin -serial stdio -no-reboot -no-shutdown -monitor none
 
 clean:
 	rm -rf $(BUILD_DIR)

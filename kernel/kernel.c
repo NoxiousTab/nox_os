@@ -22,21 +22,16 @@ void kmain(void) {
     kputs("nox_os minimal kernel\n");
     kputs("Booted to protected mode.\n\n");
     v[14]='K'; v[15]=0x07; v[16]='3'; v[17]=0x07;
-    // interrupts and drivers
-    isr_install(); v[18]='K'; v[19]=0x07; v[20]='4'; v[21]=0x07;
-    pic_remap(0x20, 0x28);
-    pit_init(100); v[22]='K'; v[23]=0x07; v[24]='5'; v[25]=0x07;
-    keyboard_init(); v[26]='K'; v[27]=0x07; v[28]='6'; v[29]=0x07;
-    // unmask timer and keyboard IRQs
-    pic_enable_irq(0);
-    pic_enable_irq(1);
-    __asm__ __volatile__("sti"); v[30]='K'; v[31]=0x07; v[32]='7'; v[33]=0x07;
+    // bring up shell first; skip IDT/PIC temporarily to isolate keyboard
     shell_init(); v[34]='K'; v[35]=0x07; v[36]='8'; v[37]=0x07;
+    keyboard_init(); v[26]='K'; v[27]=0x07; v[28]='6'; v[29]=0x07;
     // force a prompt in case shell_init output was off-screen
     kputs("\n> ");
 
     // Idle loop: busy-poll keyboard so input works even if IRQs are not firing
     for(;;) {
         keyboard_poll();
+        // heartbeat
+        static int cnt=0; if ((cnt++ & 0x0FFFFF)==0) vga_putc('.');
     }
 }
