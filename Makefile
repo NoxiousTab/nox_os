@@ -17,6 +17,10 @@ endif
 CFLAGS := -ffreestanding -O2 -Wall -Wextra -nostdlib -fno-builtin -fno-exceptions -fno-rtti -m32
 LDFLAGS := -nostdlib -m elf_i386
 
+# QEMU config (override with: make run MACHINE=pc-i440fx-2.9 QEMU_ARGS="-d int -D qemu.log")
+MACHINE ?= pc
+QEMU_ARGS ?=
+
 BUILD_DIR := build
 BOOT_DIR := bootloader
 KERNEL_DIR := kernel
@@ -32,6 +36,7 @@ BUILD_INC := $(BUILD_DIR)/build.inc
 KERNEL_SRCS := \
 	$(KERNEL_DIR)/kernel.c \
 	$(KERNEL_DIR)/drivers/vga.c \
+	$(KERNEL_DIR)/drivers/serial.c \
 	$(KERNEL_DIR)/drivers/keyboard.c \
 	$(KERNEL_DIR)/cli/shell.c \
 	$(KERNEL_DIR)/sys/idt.c \
@@ -94,9 +99,9 @@ $(IMG): $(MBR_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
 	@truncate -s 1M $@
 
 run: $(IMG)
-	qemu-system-i386 -machine pc \
+	qemu-system-i386 -machine $(MACHINE) \
 	  -drive format=raw,file=$(BUILD_DIR)/nox_os.bin \
-	  -serial stdio -no-reboot -no-shutdown -monitor none
+	  -serial stdio -no-reboot -no-shutdown -monitor none $(QEMU_ARGS)
 
 clean:
 	rm -rf $(BUILD_DIR)

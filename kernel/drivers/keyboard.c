@@ -60,20 +60,38 @@ static void put_hex8(uint8_t v){
 
 void keyboard_init(void){
     isr_register_handler(33, on_key); // IRQ1
-    // Safe path: do not program the controller/device during init to avoid pauses.
-    // Leave hardware as-is; rely on polling to consume any bytes if they appear.
+    // Minimal PS/2 init: enable port1 and enable scanning. Avoid self-tests.
+    ps2_flush();
+    ps2_wait_input_clear(); outb(0x64, 0xAE);
+    ps2_write_dev(0xF4); (void)inb(0x64); // consume quickly if any
+    // Ask device to identify (0xF2) and print up to 2 response bytes
+    ps2_write_dev(0xF2);
+    uint8_t rb;
+    if (ps2_try_read(&rb)) { vga_putc('I'); vga_putc('D'); vga_putc('='); put_hex8(rb); }
+    if (ps2_try_read(&rb)) { vga_putc(','); put_hex8(rb); }
 }
 
 void keyboard_poll(void){
+    static unsigned idle_ticks = 0;
     uint8_t st;
+    int saw_byte = 0;
     while ((st = inb(0x64)) & 0x01){
         uint8_t sc = inb(0x60);
-        if (sc == 0xFA || sc == 0xAA) continue; // ignore ACK/BAT
-        if (sc & 0x80) continue; // release
+        saw_byte = 1;
         char c = 0;
-        if (sc < sizeof(scancode_map)) c = scancode_map[sc];
+        if ((sc & 0x80) == 0 && sc < sizeof(scancode_map)) c = scancode_map[sc];
         vga_putc('*'); vga_putc('['); put_hex8(st); vga_putc(':'); put_hex8(sc); vga_putc(']');
         if (c) shell_handle_char(c);
+    }
+    if (!saw_byte) {
+        if (++idle_ticks == 50000) {
+            // Gentle re-poke: re-enable port1 and resend F4 in case device missed it
+            ps2_wait_input_clear(); outb(0x64, 0xAE);
+            ps2_write_dev(0xF4);
+            idle_ticks = 0;
+        }
+    } else {
+        idle_ticks = 0;
     }
 }
 
