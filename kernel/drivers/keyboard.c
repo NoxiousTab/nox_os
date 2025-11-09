@@ -28,6 +28,18 @@ static void ps2_flush(void){
     while (inb(0x64) & 0x01) { (void)inb(0x60); }
 }
 
+static void ps2_write_dev(uint8_t b){
+    ps2_wait_input_clear();
+    outb(0x60, b);
+}
+
+static int ps2_try_read(uint8_t* out){
+    for (int i=0;i<100000;i++){
+        if (inb(0x64) & 0x01){ *out = inb(0x60); return 1; }
+    }
+    return 0;
+}
+
 static void on_key(struct regs* r){
     (void)r;
     uint8_t sc = inb(0x60);
@@ -48,43 +60,16 @@ static void put_hex8(uint8_t v){
 
 void keyboard_init(void){
     isr_register_handler(33, on_key); // IRQ1
-    // Diagnostics: controller self-test and port test
-    vga_putc('{'); vga_putc('K'); vga_putc('B'); vga_putc(':');
-    ps2_wait_input_clear(); outb(0x64, 0xAA); // controller self-test
-    ps2_wait_output_full(); uint8_t st1 = inb(0x60); // expect 0x55
-    put_hex8(st1);
-    vga_putc(',');
-    ps2_wait_input_clear(); outb(0x64, 0xAB); // test port 1
-    ps2_wait_output_full(); uint8_t st2 = inb(0x60); // expect 0x00
-    put_hex8(st2);
-    vga_putc('}');
-
-    // Robust init with proper waits (still not blocking on ACK)
-    ps2_flush();
-    ps2_wait_input_clear(); outb(0x64, 0xAD); // disable port1
-    ps2_wait_input_clear(); outb(0x64, 0xA7); // disable port2
-    // read command byte
-    ps2_wait_input_clear(); outb(0x64, 0x20);
-    ps2_wait_output_full();
-    uint8_t cmd = inb(0x60);
-    // enable IRQ1, enable translation, ensure keyboard not disabled in cmd byte
-    cmd |= 0x01;   // IRQ1
-    cmd |= 0x40;   // translation
-    cmd &= ~(0x10); // clear disable keyboard bit if set
-    // write command byte back
-    ps2_wait_input_clear(); outb(0x64, 0x60);
-    ps2_wait_input_clear(); outb(0x60, cmd);
-    // enable port1
-    ps2_wait_input_clear(); outb(0x64, 0xAE);
-    // enable device scanning
-    ps2_wait_input_clear(); outb(0x60, 0xF4);
+    // Safe path: do not program the controller/device during init to avoid pauses.
+    // Leave hardware as-is; rely on polling to consume any bytes if they appear.
 }
 
 void keyboard_poll(void){
-    uint8_t st = inb(0x64);
-    if (st & 0x01){
+    uint8_t st;
+    while ((st = inb(0x64)) & 0x01){
         uint8_t sc = inb(0x60);
-        if (sc & 0x80) return;
+        if (sc == 0xFA || sc == 0xAA) continue; // ignore ACK/BAT
+        if (sc & 0x80) continue; // release
         char c = 0;
         if (sc < sizeof(scancode_map)) c = scancode_map[sc];
         vga_putc('*'); vga_putc('['); put_hex8(st); vga_putc(':'); put_hex8(sc); vga_putc(']');

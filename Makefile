@@ -5,7 +5,13 @@
 NASM ?= nasm
 CC   ?= i686-elf-gcc
 LD   ?= i686-elf-ld
-OBJCOPY ?= i686-elf-objcopy
+# Prefer cross objcopy; fall back to system objcopy if not found
+OBJCOPY_CANDIDATE := $(shell command -v i686-elf-objcopy 2>/dev/null)
+ifeq ($(OBJCOPY_CANDIDATE),)
+  OBJCOPY ?= objcopy
+else
+  OBJCOPY ?= $(OBJCOPY_CANDIDATE)
+endif
 
 # Flags
 CFLAGS := -ffreestanding -O2 -Wall -Wextra -nostdlib -fno-builtin -fno-exceptions -fno-rtti -m32
@@ -88,7 +94,7 @@ $(IMG): $(MBR_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
 	@truncate -s 1M $@
 
 run: $(IMG)
-	qemu-system-x86_64 -machine pc \
+	qemu-system-i386 -machine pc \
 	  -drive format=raw,file=$(BUILD_DIR)/nox_os.bin \
 	  -serial stdio -no-reboot -no-shutdown -monitor none
 
