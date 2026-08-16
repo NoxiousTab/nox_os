@@ -68,14 +68,17 @@ stage2_start:
     jbe .ax_ok1
     mov ax, cx
 .ax_ok1:
-    ; limit by boundary: max = (0x10000 - BX) >> 9, compute as (0xFFFF - BX + 1)
+    ; limit by boundary: max sectors = (0x10000 - BX) >> 9
+    ; special-case BX==0 to avoid 16-bit overflow (0xFFFF - 0 + 1 wraps to 0)
+    cmp bx, 0
+    jne .calc_boundary
+    mov dx, 128           ; full 64KiB segment available
+    jmp .have_dx
+.calc_boundary:
     mov dx, 0xFFFF
     sub dx, bx
     inc dx
     shr dx, 9
-    cmp dx, 0
-    jne .have_dx
-    mov dx, 1
 .have_dx:
     cmp ax, dx
     jbe .use_ax
@@ -112,6 +115,7 @@ stage2_start:
     mov [sectors_now], ax
 
     ; debug: kernel loaded
+    push bx                      ; preserve disk buffer offset across BIOS teletype calls
     mov si, msg_ld
 .print_ld:
     lodsb
@@ -122,6 +126,7 @@ stage2_start:
     int 0x10
     jmp .print_ld
 .after_ld:
+    pop bx                       ; restore disk buffer offset
 
     ; advance buffer by sectors_now*512 (<= 0x4000). At most one 64KiB wrap.
     mov cx, [sectors_now]

@@ -14,8 +14,8 @@ else
 endif
 
 # Flags
-CFLAGS := -ffreestanding -O2 -Wall -Wextra -nostdlib -fno-builtin -fno-exceptions -fno-rtti -m32
-LDFLAGS := -nostdlib -m elf_i386
+CFLAGS := -ffreestanding -O2 -Wall -Wextra -nostdlib -fno-builtin -fno-exceptions -m32 -fno-pic -fno-pie -fno-stack-protector -fno-stack-check
+LDFLAGS := -nostdlib -no-pie -m elf_i386
 
 # QEMU config (override with: make run MACHINE=pc-i440fx-2.9 QEMU_ARGS="-d int -D qemu.log")
 MACHINE ?= pc

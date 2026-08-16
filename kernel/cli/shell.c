@@ -11,7 +11,6 @@ static char line[SHELL_BUFSZ];
 static size_t len = 0;
 
 static void putstr(const char* s){ while(*s) vga_putc(*s++); }
-static void prompt(void){ putstr("\n> "); }
 
 static int streq(const char* a, const char* b){
     while(*a && *b && *a==*b){ a++; b++; }

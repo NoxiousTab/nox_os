@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include "serial.h"
-#include "vga.h"
 #include "../sys/io.h"
 #include "../cli/shell.h"
 
@@ -32,12 +31,6 @@ void serial_poll(void){
         uint8_t b = com_in(base + 0);
         char c = (char)b;
         if (c == '\r') c = '\n';
-        // visible trace on VGA
-        extern void vga_putc(char);
-        extern void vga_put_hex(uint8_t);
-        vga_putc('#'); vga_putc('[');
-        const char hex[] = "0123456789ABCDEF";
-        vga_putc(hex[(b>>4)&0xF]); vga_putc(hex[b&0xF]); vga_putc(']');
         if (c) shell_handle_char(c);
     }
 }
