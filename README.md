@@ -1,4 +1,4 @@
-# ⚙️ nox_os — Educational Command-Line Operating System
+#  nox_os - Educational Command-Line Operating System
 
 **nox_os** is a minimal, educational operating system built entirely from scratch to demonstrate the core principles of OS design — from bootloading and memory management to multitasking and file systems — all through a clean **command-line interface**.
 
@@ -10,22 +10,22 @@ It aims to be **readable, hackable, and deeply instructive**, making it ideal fo
 ## Features
 
 * **Custom Bootloader** (no GRUB dependency)
-* ⚙️ **Protected Mode Kernel** written in C/C++
-* 🧠 **Paging and Heap Memory Management**
-* 🔄 **Round-Robin Task Scheduler**
-* 💾 **Simple FAT12-like Filesystem**
-* ⌨️ **Keyboard and VGA Text Drivers**
-* 🔌 **System Call Interface**
-* 💻 **Command-Line Shell** with built-in commands:
+* **Protected Mode Kernel** written in C/C++
+* **Paging and Heap Memory Management**
+* **Round-Robin Task Scheduler**
+* **Simple FAT12-like Filesystem**
+* **Keyboard and VGA Text Drivers**
+* **System Call Interface**
+* **Command-Line Shell** with built-in commands:
 
   ```
   help, ls, cat, echo, meminfo, ps, reboot
   ```
-* 💽 **Bootable QEMU Image** included for easy testing
+* **Bootable QEMU Image** included for easy testing
 
 ---
 
-## 🎯 Project Goals
+##  Project Goals
 
 * Understand the **low-level boot process** and transition from real to protected mode.
 * Learn how a kernel manages **memory, interrupts, processes, and drivers**.
@@ -36,7 +36,7 @@ It aims to be **readable, hackable, and deeply instructive**, making it ideal fo
 
 ---
 
-## 🛠️ Building nox_os
+##  Building nox_os
 
 ### Prerequisites
 
@@ -47,7 +47,7 @@ You’ll need:
 * `qemu-system-x86_64` for running the OS
 * `make` for automated builds
 
-> 💡 Tip: If you don’t have a cross-compiler, the [OSDev Wiki](https://wiki.osdev.org/GCC_Cross-Compiler) has setup instructions.
+> Tip: If you don’t have a cross-compiler, the [OSDev Wiki](https://wiki.osdev.org/GCC_Cross-Compiler) has setup instructions.
 
 ---
 
@@ -92,7 +92,7 @@ qemu-system-x86_64 -drive format=raw,file=build/nox_os.bin
 
 ---
 
-## 🧩 System Overview
+## System Overview
 
 | Component          | Description                                                          |
 | ------------------ | -------------------------------------------------------------------- |
