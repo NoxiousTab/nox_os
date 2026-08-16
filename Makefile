@@ -45,7 +45,8 @@ KERNEL_SRCS := \
 	$(KERNEL_DIR)/sys/pit.c \
 	$(KERNEL_DIR)/sys/reboot.c \
 	$(KERNEL_DIR)/lib/string.c \
-	$(KERNEL_DIR)/lib/mem.c
+	$(KERNEL_DIR)/lib/mem.c \
+	$(KERNEL_DIR)/mm/pmm.c
 
 KERNEL_OBJS := $(patsubst $(KERNEL_DIR)/%.c,$(BUILD_DIR)/%.o,$(KERNEL_SRCS))
 ASM_SRCS := $(KERNEL_DIR)/sys/interrupts.asm $(KERNEL_DIR)/start.asm
@@ -60,6 +61,7 @@ $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)/drivers
 	@mkdir -p $(BUILD_DIR)/sys
 	@mkdir -p $(BUILD_DIR)/lib
+	@mkdir -p $(BUILD_DIR)/mm
 
 $(MBR_BIN): $(BOOT_DIR)/mbr.asm | $(BUILD_DIR)
 	$(NASM) -f bin $< -o $@

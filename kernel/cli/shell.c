@@ -5,12 +5,26 @@
 #include "../lib/string.h"
 #include "../sys/pit.h"
 #include "../sys/reboot.h"
+#include "../mm/pmm.h"
 
 #define SHELL_BUFSZ 128
 static char line[SHELL_BUFSZ];
 static size_t len = 0;
 
 static void putstr(const char* s){ while(*s) vga_putc(*s++); }
+
+static void putdec(uint32_t v){
+    char buf[12]; int i=0;
+    if (v==0) buf[i++]='0';
+    while(v){ buf[i++] = '0' + (v%10); v/=10; }
+    while(i--) vga_putc(buf[i]);
+}
+
+static void puthex(uint32_t v){
+    const char hex[] = "0123456789ABCDEF";
+    putstr("0x");
+    for (int shift=28; shift>=0; shift-=4) vga_putc(hex[(v>>shift)&0xF]);
+}
 
 static int streq(const char* a, const char* b){
     while(*a && *b && *a==*b){ a++; b++; }
@@ -21,7 +35,7 @@ static const char* skipsp(const char* s){ while(*s==' ') s++; return s; }
 
 static void cmd_help(void){
     putstr("Commands:\n");
-    putstr(" help\n echo <text>\n meminfo\n ps\n ls\n cat <file>\n reboot\n");
+    putstr(" help\n echo <text>\n meminfo\n palloc\n pfree\n ps\n ls\n cat <file>\n reboot\n");
 }
 
 static void cmd_echo(const char* args){ putstr(args); vga_putc('\n'); }
@@ -34,12 +48,32 @@ static void cmd_meminfo(void){
     while(t){ buf[i++] = '0' + (t%10); t/=10; }
     while(i--) vga_putc(buf[i]);
     vga_putc('\n');
+
+    putstr("frames: ");
+    putdec((uint32_t)pmm_free_frames());
+    putstr(" free / ");
+    putdec((uint32_t)pmm_total_frames());
+    putstr(" total (4KiB each)\n");
 }
 
 static void cmd_ps(void){ putstr("no tasks\n"); }
 static void cmd_ls(void){ putstr("fs not ready\n"); }
 static void cmd_cat(const char* args){ (void)args; putstr("fs not ready\n"); }
 static void cmd_reboot(void){ reboot(); }
+
+static void* last_alloc = 0;
+static void cmd_palloc(void){
+    void* f = pmm_alloc_frame();
+    if (!f) { putstr("out of frames\n"); return; }
+    last_alloc = f;
+    putstr("allocated frame at "); puthex((uint32_t)f); putstr("\n");
+}
+static void cmd_pfree(void){
+    if (!last_alloc) { putstr("no frame to free (run palloc first)\n"); return; }
+    puthex((uint32_t)last_alloc); putstr(" freed\n");
+    pmm_free_frame(last_alloc);
+    last_alloc = 0;
+}
 
 static void execute(const char* cmdline){
     const char* s = skipsp(cmdline);
@@ -54,6 +88,8 @@ static void execute(const char* cmdline){
     else if (streq(cmd,"help")) cmd_help();
     else if (streq(cmd,"echo")) cmd_echo(args);
     else if (streq(cmd,"meminfo")) cmd_meminfo();
+    else if (streq(cmd,"palloc")) cmd_palloc();
+    else if (streq(cmd,"pfree")) cmd_pfree();
     else if (streq(cmd,"ps")) cmd_ps();
     else if (streq(cmd,"ls")) cmd_ls();
     else if (streq(cmd,"cat")) cmd_cat(args);

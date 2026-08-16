@@ -9,6 +9,7 @@
 #include "drivers/keyboard.h"
 #include "drivers/serial.h"
 #include "cli/shell.h"
+#include "mm/pmm.h"
 
 static void kputs(const char* s) {
     while (*s) vga_putc(*s++);
@@ -17,6 +18,7 @@ static void kputs(const char* s) {
 void kmain(void) {
     vga_init();
     vga_clear();
+    pmm_init();
 
     // Install IDT so exceptions are handled (avoid triple faults)
     isr_install();
