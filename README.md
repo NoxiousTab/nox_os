@@ -78,7 +78,7 @@ qemu-system-x86_64 -drive format=raw,file=build/nox_os.bin
 
 ---
 
-## 💻 CLI Commands
+## CLI Commands
 
 | Command   | Description                         |
 | --------- | ----------------------------------- |
