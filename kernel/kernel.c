@@ -11,6 +11,7 @@
 #include "cli/shell.h"
 #include "mm/pmm.h"
 #include "mm/heap.h"
+#include "fs/fs.h"
 
 static void kputs(const char* s) {
     while (*s) vga_putc(*s++);
@@ -21,6 +22,7 @@ void kmain(void) {
     vga_clear();
     pmm_init();
     heap_init();
+    fs_init();
 
     // Install IDT so exceptions are handled (avoid triple faults)
     isr_install();

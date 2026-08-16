@@ -7,6 +7,7 @@
 #include "../sys/reboot.h"
 #include "../mm/pmm.h"
 #include "../mm/heap.h"
+#include "../fs/fs.h"
 
 #define SHELL_BUFSZ 128
 static char line[SHELL_BUFSZ];
@@ -34,9 +35,20 @@ static int streq(const char* a, const char* b){
 
 static const char* skipsp(const char* s){ while(*s==' ') s++; return s; }
 
+// Copies the first whitespace-delimited token from s into out (bounded by
+// outsz), returns a pointer to whatever follows (after skipping the token
+// and any following spaces).
+static const char* read_token(const char* s, char* out, size_t outsz){
+    s = skipsp(s);
+    size_t i = 0;
+    while (*s && *s != ' ' && i < outsz-1) { out[i++] = *s++; }
+    out[i] = 0;
+    return skipsp(s);
+}
+
 static void cmd_help(void){
     putstr("Commands:\n");
-    putstr(" help\n echo <text>\n meminfo\n palloc\n pfree\n halloc <bytes>\n hfree\n ps\n ls\n cat <file>\n reboot\n");
+    putstr(" help\n echo <text>\n meminfo\n palloc\n pfree\n halloc <bytes>\n hfree\n ps\n ls\n cat <file>\n write <file> <text>\n rm <file>\n reboot\n");
 }
 
 static void cmd_echo(const char* args){ putstr(args); vga_putc('\n'); }
@@ -64,8 +76,48 @@ static void cmd_meminfo(void){
 }
 
 static void cmd_ps(void){ putstr("no tasks\n"); }
-static void cmd_ls(void){ putstr("fs not ready\n"); }
-static void cmd_cat(const char* args){ (void)args; putstr("fs not ready\n"); }
+
+static void cmd_ls(void){
+    fs_file_t* f = fs_list();
+    if (!f) { putstr("(empty)\n"); return; }
+    for (; f; f = f->next) {
+        putstr(f->name);
+        putstr("  ");
+        putdec((uint32_t)f->size);
+        putstr(" bytes\n");
+    }
+}
+
+static void cmd_cat(const char* args){
+    char fname[FS_MAX_NAME];
+    read_token(args, fname, sizeof(fname));
+    if (fname[0] == 0) { putstr("usage: cat <file>\n"); return; }
+    fs_file_t* f = fs_find(fname);
+    if (!f) { putstr("cat: no such file: "); putstr(fname); putstr("\n"); return; }
+    for (size_t i=0; i<f->size; i++) vga_putc((char)f->data[i]);
+    if (f->size == 0 || f->data[f->size-1] != '\n') vga_putc('\n');
+}
+
+static void cmd_write(const char* args){
+    char fname[FS_MAX_NAME];
+    const char* rest = read_token(args, fname, sizeof(fname));
+    if (fname[0] == 0) { putstr("usage: write <file> <text>\n"); return; }
+    size_t tlen = strlen(rest);
+    if (fs_write(fname, (const uint8_t*)rest, tlen) != 0) {
+        putstr("write failed (bad name, content too large, or out of memory)\n");
+        return;
+    }
+    putstr("wrote "); putdec((uint32_t)tlen); putstr(" bytes to "); putstr(fname); putstr("\n");
+}
+
+static void cmd_rm(const char* args){
+    char fname[FS_MAX_NAME];
+    read_token(args, fname, sizeof(fname));
+    if (fname[0] == 0) { putstr("usage: rm <file>\n"); return; }
+    if (fs_delete(fname) != 0) { putstr("rm: no such file: "); putstr(fname); putstr("\n"); return; }
+    putstr("removed "); putstr(fname); putstr("\n");
+}
+
 static void cmd_reboot(void){ reboot(); }
 
 static void* last_alloc = 0;
@@ -120,6 +172,8 @@ static void execute(const char* cmdline){
     else if (streq(cmd,"ps")) cmd_ps();
     else if (streq(cmd,"ls")) cmd_ls();
     else if (streq(cmd,"cat")) cmd_cat(args);
+    else if (streq(cmd,"write")) cmd_write(args);
+    else if (streq(cmd,"rm")) cmd_rm(args);
     else if (streq(cmd,"reboot")) cmd_reboot();
     else { putstr("unknown command\n"); }
 }
