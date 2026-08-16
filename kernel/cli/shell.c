@@ -65,6 +65,7 @@ void shell_init(void){ len = 0; line[0]=0; putstr("> "); }
 
 void shell_handle_char(char c){
     if (c=='\n'){
+        putstr("\n");
         line[len]=0;
         execute(line);
         len=0; line[0]=0;
