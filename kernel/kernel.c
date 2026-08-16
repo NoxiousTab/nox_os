@@ -21,12 +21,14 @@ void kmain(void) {
     // Install IDT so exceptions are handled (avoid triple faults)
     isr_install();
     pic_remap(0x20, 0x28);
+    pit_init(100); // 100 Hz tick rate
     kputs("nox_os minimal kernel\n");
     kputs("Booted to protected mode.\n\n");
 
     shell_init();
     keyboard_init();
-    pic_enable_irq(1);
+    pic_enable_irq(0); // PIT
+    pic_enable_irq(1); // keyboard
     __asm__ __volatile__("sti");
     serial_init();
 
