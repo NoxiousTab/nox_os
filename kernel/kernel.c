@@ -10,6 +10,7 @@
 #include "drivers/serial.h"
 #include "cli/shell.h"
 #include "mm/pmm.h"
+#include "mm/heap.h"
 
 static void kputs(const char* s) {
     while (*s) vga_putc(*s++);
@@ -19,6 +20,7 @@ void kmain(void) {
     vga_init();
     vga_clear();
     pmm_init();
+    heap_init();
 
     // Install IDT so exceptions are handled (avoid triple faults)
     isr_install();

@@ -6,6 +6,7 @@
 #include "../sys/pit.h"
 #include "../sys/reboot.h"
 #include "../mm/pmm.h"
+#include "../mm/heap.h"
 
 #define SHELL_BUFSZ 128
 static char line[SHELL_BUFSZ];
@@ -35,7 +36,7 @@ static const char* skipsp(const char* s){ while(*s==' ') s++; return s; }
 
 static void cmd_help(void){
     putstr("Commands:\n");
-    putstr(" help\n echo <text>\n meminfo\n palloc\n pfree\n ps\n ls\n cat <file>\n reboot\n");
+    putstr(" help\n echo <text>\n meminfo\n palloc\n pfree\n halloc <bytes>\n hfree\n ps\n ls\n cat <file>\n reboot\n");
 }
 
 static void cmd_echo(const char* args){ putstr(args); vga_putc('\n'); }
@@ -54,6 +55,12 @@ static void cmd_meminfo(void){
     putstr(" free / ");
     putdec((uint32_t)pmm_total_frames());
     putstr(" total (4KiB each)\n");
+
+    putstr("heap: ");
+    putdec((uint32_t)kheap_bytes_free());
+    putstr(" free / ");
+    putdec((uint32_t)kheap_bytes_total());
+    putstr(" bytes (grows by 4KiB frames)\n");
 }
 
 static void cmd_ps(void){ putstr("no tasks\n"); }
@@ -75,6 +82,24 @@ static void cmd_pfree(void){
     last_alloc = 0;
 }
 
+static void* last_halloc = 0;
+static void cmd_halloc(const char* args){
+    size_t sz = 0;
+    const char* p = skipsp(args);
+    while (*p >= '0' && *p <= '9') { sz = sz*10 + (size_t)(*p - '0'); p++; }
+    if (sz == 0) { putstr("usage: halloc <bytes>\n"); return; }
+    void* ptr = kmalloc(sz);
+    if (!ptr) { putstr("kmalloc failed (out of heap memory, or size too large for one frame)\n"); return; }
+    last_halloc = ptr;
+    putstr("allocated "); putdec((uint32_t)sz); putstr(" bytes at "); puthex((uint32_t)ptr); putstr("\n");
+}
+static void cmd_hfree(void){
+    if (!last_halloc) { putstr("no heap block to free (run halloc first)\n"); return; }
+    puthex((uint32_t)last_halloc); putstr(" freed\n");
+    kfree(last_halloc);
+    last_halloc = 0;
+}
+
 static void execute(const char* cmdline){
     const char* s = skipsp(cmdline);
     // find command token
@@ -90,6 +115,8 @@ static void execute(const char* cmdline){
     else if (streq(cmd,"meminfo")) cmd_meminfo();
     else if (streq(cmd,"palloc")) cmd_palloc();
     else if (streq(cmd,"pfree")) cmd_pfree();
+    else if (streq(cmd,"halloc")) cmd_halloc(args);
+    else if (streq(cmd,"hfree")) cmd_hfree();
     else if (streq(cmd,"ps")) cmd_ps();
     else if (streq(cmd,"ls")) cmd_ls();
     else if (streq(cmd,"cat")) cmd_cat(args);
