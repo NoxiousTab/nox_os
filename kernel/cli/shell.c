@@ -48,7 +48,7 @@ static const char* read_token(const char* s, char* out, size_t outsz){
 
 static void cmd_help(void){
     putstr("Commands:\n");
-    putstr(" help\n echo <text>\n meminfo\n palloc\n pfree\n halloc <bytes>\n hfree\n ps\n ls\n cat <file>\n write <file> <text>\n rm <file>\n reboot\n");
+    putstr(" help\n echo <text>\n meminfo\n palloc\n pfree\n halloc <bytes>\n hfree\n pftest\n ps\n ls\n cat <file>\n write <file> <text>\n rm <file>\n reboot\n");
 }
 
 static void cmd_echo(const char* args){ putstr(args); vga_putc('\n'); }
@@ -73,6 +73,8 @@ static void cmd_meminfo(void){
     putstr(" free / ");
     putdec((uint32_t)kheap_bytes_total());
     putstr(" bytes (grows by 4KiB frames)\n");
+
+    putstr("paging: identity-mapped, 0x0-0xFFFFFF (16MiB)\n");
 }
 
 static void cmd_ps(void){ putstr("no tasks\n"); }
@@ -119,6 +121,16 @@ static void cmd_rm(const char* args){
 }
 
 static void cmd_reboot(void){ reboot(); }
+
+static void cmd_pftest(void){
+    putstr("Triggering a deliberate page fault (reading unmapped memory at 0x02000000).\n");
+    putstr("This will halt the system via the new page-fault handler -- that's expected;\n");
+    putstr("restart QEMU afterward.\n");
+    volatile uint32_t* bad = (volatile uint32_t*)0x02000000;
+    uint32_t v = *bad; // 32MiB is well past our 16MiB identity-mapped region
+    (void)v;
+    putstr("(this line should never print)\n");
+}
 
 static void* last_alloc = 0;
 static void cmd_palloc(void){
@@ -169,6 +181,7 @@ static void execute(const char* cmdline){
     else if (streq(cmd,"pfree")) cmd_pfree();
     else if (streq(cmd,"halloc")) cmd_halloc(args);
     else if (streq(cmd,"hfree")) cmd_hfree();
+    else if (streq(cmd,"pftest")) cmd_pftest();
     else if (streq(cmd,"ps")) cmd_ps();
     else if (streq(cmd,"ls")) cmd_ls();
     else if (streq(cmd,"cat")) cmd_cat(args);

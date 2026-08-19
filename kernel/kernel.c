@@ -12,6 +12,7 @@
 #include "mm/pmm.h"
 #include "mm/heap.h"
 #include "fs/fs.h"
+#include "mm/paging.h"
 
 static void kputs(const char* s) {
     while (*s) vga_putc(*s++);
@@ -26,8 +27,10 @@ void kmain(void) {
 
     // Install IDT so exceptions are handled (avoid triple faults)
     isr_install();
+    paging_init();
     pic_remap(0x20, 0x28);
     pit_init(100); // 100 Hz tick rate
+    
     kputs("nox_os minimal kernel\n");
     kputs("Booted to protected mode.\n\n");
 

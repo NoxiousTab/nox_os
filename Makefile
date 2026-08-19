@@ -48,6 +48,7 @@ KERNEL_SRCS := \
 	$(KERNEL_DIR)/lib/mem.c \
 	$(KERNEL_DIR)/mm/pmm.c \
 	$(KERNEL_DIR)/mm/heap.c \
+	$(KERNEL_DIR)/mm/paging.c \
 	$(KERNEL_DIR)/fs/fs.c
 
 KERNEL_OBJS := $(patsubst $(KERNEL_DIR)/%.c,$(BUILD_DIR)/%.o,$(KERNEL_SRCS))
