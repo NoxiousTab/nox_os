@@ -8,6 +8,7 @@
 #include "../mm/pmm.h"
 #include "../mm/heap.h"
 #include "../fs/fs.h"
+#include "../task/task.h"
 
 #define SHELL_BUFSZ 128
 static char line[SHELL_BUFSZ];
@@ -48,7 +49,7 @@ static const char* read_token(const char* s, char* out, size_t outsz){
 
 static void cmd_help(void){
     putstr("Commands:\n");
-    putstr(" help\n echo <text>\n meminfo\n palloc\n pfree\n halloc <bytes>\n hfree\n pftest\n ps\n ls\n cat <file>\n write <file> <text>\n rm <file>\n reboot\n");
+    putstr(" help\n echo <text>\n meminfo\n palloc\n pfree\n halloc <bytes>\n hfree\n pftest\n spawn <name>\n ps\n ls\n cat <file>\n write <file> <text>\n rm <file>\n reboot\n");
 }
 
 static void cmd_echo(const char* args){ putstr(args); vga_putc('\n'); }
@@ -77,7 +78,23 @@ static void cmd_meminfo(void){
     putstr("paging: identity-mapped, 0x0-0xFFFFFF (16MiB)\n");
 }
 
-static void cmd_ps(void){ putstr("no tasks\n"); }
+static void cmd_ps(void){
+    task_t* head = task_list();
+    task_t* t = head;
+    putstr("ID  STATE       RUNS  NAME\n");
+    do {
+        putdec(t->id); putstr("   ");
+        switch (t->state) {
+            case TASK_RUNNING:    putstr("running     "); break;
+            case TASK_READY:      putstr("ready       "); break;
+            case TASK_TERMINATED: putstr("terminated  "); break;
+            default:              putstr("?           "); break;
+        }
+        putdec(t->run_count); putstr("     ");
+        putstr(t->name); putstr("\n");
+        t = t->next;
+    } while (t != head);
+}
 
 static void cmd_ls(void){
     fs_file_t* f = fs_list();
@@ -164,6 +181,23 @@ static void cmd_hfree(void){
     last_halloc = 0;
 }
 
+// A demo task with no purpose other than to prove cooperative scheduling
+// works: it just yields forever. Its run_count (visible via `ps`) climbing
+// each time you check is the visible proof that the kernel's idle loop is
+// actually handing it turns.
+static void demo_task(void){
+    for (;;) { task_yield(); }
+}
+
+static void cmd_spawn(const char* args){
+    char name[TASK_NAME_MAX];
+    read_token(args, name, sizeof(name));
+    if (name[0] == 0) { putstr("usage: spawn <name>\n"); return; }
+    task_t* t = task_create(name, demo_task);
+    if (!t) { putstr("spawn failed (out of heap memory or physical frames)\n"); return; }
+    putstr("spawned task id "); putdec(t->id); putstr(" ("); putstr(name); putstr(")\n");
+}
+
 static void execute(const char* cmdline){
     const char* s = skipsp(cmdline);
     // find command token
@@ -182,6 +216,7 @@ static void execute(const char* cmdline){
     else if (streq(cmd,"halloc")) cmd_halloc(args);
     else if (streq(cmd,"hfree")) cmd_hfree();
     else if (streq(cmd,"pftest")) cmd_pftest();
+    else if (streq(cmd,"spawn")) cmd_spawn(args);
     else if (streq(cmd,"ps")) cmd_ps();
     else if (streq(cmd,"ls")) cmd_ls();
     else if (streq(cmd,"cat")) cmd_cat(args);

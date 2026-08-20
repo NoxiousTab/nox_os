@@ -13,6 +13,7 @@
 #include "mm/heap.h"
 #include "fs/fs.h"
 #include "mm/paging.h"
+#include "task/task.h"
 
 static void kputs(const char* s) {
     while (*s) vga_putc(*s++);
@@ -24,13 +25,13 @@ void kmain(void) {
     pmm_init();
     heap_init();
     fs_init();
+    task_init();
 
     // Install IDT so exceptions are handled (avoid triple faults)
     isr_install();
     paging_init();
     pic_remap(0x20, 0x28);
     pit_init(100); // 100 Hz tick rate
-    
     kputs("nox_os minimal kernel\n");
     kputs("Booted to protected mode.\n\n");
 
@@ -43,7 +44,10 @@ void kmain(void) {
 
     // Idle loop: keyboard input arrives via IRQ1 (on_key in keyboard.c).
     // Serial has no interrupt handler yet, so it's still polled here.
+    // task_yield() gives any spawned tasks a turn -- see task/task.h for
+    // why this is cooperative rather than preemptive for now.
     for (;;) {
         serial_poll();
+        task_yield();
     }
 }
