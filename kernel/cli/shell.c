@@ -185,8 +185,15 @@ static void cmd_hfree(void){
 // works: it just yields forever. Its run_count (visible via `ps`) climbing
 // each time you check is the visible proof that the kernel's idle loop is
 // actually handing it turns.
+// A demo task with no purpose other than to prove timer-gated cooperative
+// scheduling works: it holds the CPU until its quantum expires (checked via
+// task_check_preempt()), then yields. Its run_count (visible via `ps`)
+// climbing in small, steady, real-time-paced amounts -- rather than
+// millions of switches per second -- is the visible proof a genuine ~50ms
+// time slice is being enforced, not just "yield as fast as the CPU can
+// loop" like before.
 static void demo_task(void){
-    for (;;) { task_yield(); }
+    for (;;) { task_check_preempt(); }
 }
 
 static void cmd_spawn(const char* args){

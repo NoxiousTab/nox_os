@@ -119,5 +119,23 @@ void task_exit(void){
     for (;;) task_yield();
 }
 
+#define SCHED_QUANTUM_TICKS 5u // ~50ms at the PIT's 100Hz rate (see sys/pit.c)
+static volatile uint32_t ticks_since_switch = 0;
+static volatile int need_resched = 0;
+
+void task_notify_tick(void){
+    if (++ticks_since_switch >= SCHED_QUANTUM_TICKS) {
+        ticks_since_switch = 0;
+        need_resched = 1;
+    }
+}
+
+void task_check_preempt(void){
+    if (need_resched) {
+        need_resched = 0;
+        task_yield();
+    }
+}
+
 task_t* task_list(void){ return &main_task; }
 uint32_t task_count(void){ return total_tasks; }

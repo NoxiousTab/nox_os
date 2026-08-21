@@ -3,13 +3,14 @@
 #include "pit.h"
 #include "isr.h"
 #include "pic.h"
+#include "../task/task.h"
 
 #define PIT_CH0 0x40
 #define PIT_CMD 0x43
 
 static volatile uint64_t ticks = 0;
 
-static void pit_isr(struct regs* r){ (void)r; ticks++; pic_send_eoi(0); }
+static void pit_isr(struct regs* r){ (void)r; ticks++; task_notify_tick(); pic_send_eoi(0); }
 
 uint64_t pit_ticks(void){ return ticks; }
 

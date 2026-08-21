@@ -60,6 +60,21 @@ task_t* task_create(const char* name, void (*entry)(void));
 // any. Returns immediately (no-op) if there's nothing else ready to run.
 void task_yield(void);
 
+// Called from the PIT interrupt handler (sys/pit.c) on every tick. Must
+// stay trivial and interrupt-context-safe: no task switching happens here,
+// just quantum bookkeeping (increments a counter, sets a flag). The actual
+// switch, if any, happens later at a task_check_preempt() call site
+// outside interrupt context.
+void task_notify_tick(void);
+
+// Switches to the next READY task, but only if the current time quantum
+// has expired (see task_notify_tick()); otherwise returns immediately
+// without switching. Call this in a loop instead of task_yield() to get
+// real timer-gated time-slicing instead of switching on every call.
+// NOT full async preemption -- a task must call this (or task_yield())
+// itself; it isn't interrupted involuntarily mid-instruction.
+void task_check_preempt(void);
+
 // Marks the current task TERMINATED and yields forever. Called
 // automatically if a task's entry function returns; can also be called
 // explicitly by a task to end itself early.
